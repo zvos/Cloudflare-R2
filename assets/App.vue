@@ -5,12 +5,16 @@
       :value="uploadProgress"
       max="100"
     ></progress>
+    <!-- 粘贴上传提示 -->
+    <div v-if="pasteHint" class="paste-hint">
+      {{ pasteHint }}
+    </div>
     <UploadPopup
       v-model="showUploadPopup"
       @upload="onUploadClicked"
       @createFolder="createFolder"
     ></UploadPopup>
-    <button class="upload-button circle" @click="showUploadPopup = true">
+    <button class="upload-button circle" @click="showUploadPopup = true" title="点击上传文件，或使用 Ctrl+V 粘贴上传">
       <!-- 替换为内联SVG上传图标 -->
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -256,6 +260,7 @@ export default {
     showUploadPopup: false,
     uploadProgress: null,
     uploadQueue: [],
+    pasteHint: null, // 粘贴提示消息
   }),
 
   computed: {
@@ -680,6 +685,46 @@ export default {
       if (searchParams.get("p") !== this.cwd)
         this.cwd = searchParams.get("p") || "";
     });
+
+    // 添加粘贴上传功能
+    window.addEventListener("paste", (ev) => {
+      // 如果正在输入框中粘贴，不触发上传
+      const activeElement = document.activeElement;
+      if (activeElement && (
+        activeElement.tagName === "INPUT" || 
+        activeElement.tagName === "TEXTAREA" ||
+        activeElement.isContentEditable
+      )) {
+        return;
+      }
+
+      // 获取剪贴板中的文件
+      const items = ev.clipboardData?.items;
+      if (!items) return;
+
+      const files = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === "file") {
+          const file = item.getAsFile();
+          if (file) {
+            files.push(file);
+          }
+        }
+      }
+
+      // 如果有文件，则上传
+      if (files.length > 0) {
+        ev.preventDefault();
+        this.uploadFiles(files);
+        
+        // 显示提示信息
+        this.pasteHint = `正在上传 ${files.length} 个文件...`;
+        setTimeout(() => {
+          this.pasteHint = null;
+        }, 3000);
+      }
+    });
   },
 
   components: {
@@ -722,5 +767,31 @@ export default {
   position: absolute;
   top: 100%;
   right: 0;
+}
+
+.paste-hint {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #4CAF50;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-in;
+  font-size: 14px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 </style>
