@@ -170,6 +170,11 @@
       ></div>
       <ul v-if="typeof focusedItem === 'string'" class="contextmenu-list">
         <li>
+          <button @click="downloadFolder(focusedItem)">
+            <span>下载文件夹</span>
+          </button>
+        </li>
+        <li>
           <button @click="copyLink(`/?p=${encodeURIComponent(focusedItem)}`)">
             <span>复制链接</span>
           </button>
@@ -277,6 +282,32 @@ export default {
     copyLink(link) {
       const url = new URL(link, window.location.origin);
       navigator.clipboard.writeText(url.toString());
+    },
+
+    async downloadFolder(folderPath) {
+      try {
+        this.showContextMenu = false;
+        
+        // 显示下载提示
+        const folderName = folderPath.split('/').filter(Boolean).pop() || '文件夹';
+        if (!confirm(`确定要下载 ${folderName} 及其所有文件吗？`)) {
+          return;
+        }
+
+        // 创建下载链接
+        const downloadUrl = `/api/download/${folderPath}`;
+        
+        // 使用 a 标签触发下载
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `${folderName}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (error) {
+        console.error('下载文件夹失败:', error);
+        alert('下载失败，请重试');
+      }
     },
 
     async copyPaste(source, target) {
